@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Migração Anota Aí - Reorganizado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .section-divider { border-top: 2px solid #e2e8f0; margin: 3rem 0; position: relative; }
+        .section-label { 
+            position: absolute; 
+            top: -14px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: #f1f5f9; 
+            padding: 0 1.5rem;
+            color: #64748b;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Componentes Reutilizáveis
+        const Card = ({ children, className = "", title = "", subtitle = "" }) => (
+            <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full transition-all hover:shadow-md ${className}`}>
+                {title && (
+                    <div className="mb-4 border-b border-slate-50 pb-3">
+                        <h3 className="text-lg font-bold text-slate-800 leading-tight">{title}</h3>
+                        {subtitle && <p className="text-xs text-slate-400 mt-1 font-medium">{subtitle}</p>}
+                    </div>
+                )}
+                {children}
+            </div>
+        );
+
+        const StatBox = ({ title, value, subtitle, icon, colorClass = "text-red-500", bgClass = "bg-red-50" }) => (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center space-x-4 transition-transform hover:scale-[1.02]">
+                <div className={`p-4 rounded-xl ${bgClass} ${colorClass}`}>
+                    {icon}
+                </div>
+                <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
+                    <h3 className="text-2xl font-black text-slate-800">{value}</h3>
+                    {subtitle && <p className="text-[10px] font-medium text-slate-500 mt-0.5">{subtitle}</p>}
+                </div>
+            </div>
+        );
+
+        const ProgressBar = ({ label, percentage, color = "bg-red-500", icon = "", subtitle = "" }) => (
+            <div className="mb-4 last:mb-0">
+                <div className="flex justify-between items-end mb-1.5">
+                    <div>
+                        <span className="font-semibold text-slate-700 text-sm">{icon} {label}</span>
+                        {subtitle && <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>}
+                    </div>
+                    <span className="font-bold text-slate-800 text-sm">{percentage}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div className={`${color} h-2 rounded-full transition-all duration-700 ease-out`} style={{ width: `${percentage}%` }}></div>
+                </div>
+            </div>
+        );
+
+        const Icons = {
+            Users: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>,
+            Heart: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>,
+            Calendar: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>,
+            Trend: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg>,
+            Baby: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        };
+
+        const Dashboard = () => (
+            <div className="space-y-12 animate-fade-in pb-20">
+                
+                {/* SUMÁRIO EXECUTIVO (KPIs) - Reduzido para 3 colunas */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <StatBox title="Colaboradores" value="380" subtitle="Total Foodlovers" icon={Icons.Users} colorClass="text-red-600" bgClass="bg-red-50" />
+                    <StatBox title="Idade Média" value="30,4 anos" subtitle="Foco em Millennials" icon={Icons.Calendar} colorClass="text-indigo-600" bgClass="bg-indigo-50" />
+                    <StatBox title="Dependentes" value="134" subtitle="Crescimento de 352%" icon={Icons.Heart} colorClass="text-emerald-600" bgClass="bg-emerald-50" />
+                </div>
+
+                {/* VISÃO ESTRATÉGICA / CONSOLIDAÇÃO */}
+                <section className="space-y-8">
+                    <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-slate-300 relative overflow-hidden transition-transform hover:scale-[1.01]">
+                        <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/10 rounded-full -mr-40 -mt-40 blur-3xl"></div>
+                        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-center gap-8">
+                            <div className="max-w-2xl">
+                                <h3 className="text-3xl font-black mb-4 tracking-tight">Consolidação de Ciclo</h3>
+                                <p className="text-slate-400 text-lg leading-relaxed">
+                                    A migração confirmou um perfil <span className="text-white font-bold">Millennial (63%)</span> com forte inclinação familiar. O crescimento exponencial de dependentes (+352%) era esperado devido a mudança de modelo (desconto em folha > para flexível), enquanto a adesão de <span className="text-red-500 font-bold text-xl">92%</span> ao upgrade do VR valida a estratégia de flexibilidade proposta.
+                                </p>
+                            </div>
+                            <div className="flex gap-6 shrink-0">
+                                <div className="text-center p-6 bg-white/5 rounded-3xl border border-white/10 w-32">
+                                    <p className="text-4xl font-black text-red-500 mb-1">92%</p>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Adesão VR</p>
+                                </div>
+                                <div className="text-center p-6 bg-white/5 rounded-3xl border border-white/10 w-32">
+                                    <p className="text-4xl font-black text-blue-500 mb-1">3.5x</p>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Diferença Dep.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div className="section-divider">
+                    <span className="section-label">Sessão 1: Detalhamento Populacional</span>
+                </div>
+
+                {/* BLOCO: DEMOGRAFIA */}
+                <section>
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200">1</div>
+                        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Demografia</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+                        <Card title="📊 Senioridade por Grade" subtitle="Operação e Liderança">
+                            <div className="space-y-4">
+                                <ProgressBar label="Pleno/Sênior (Grades 6-9)" percentage={80} color="bg-indigo-500" />
+                                <ProgressBar label="Liderança (Grades 10-14)" percentage={17.4} color="bg-purple-500" />
+                                <ProgressBar label="Júnior/Aprendiz (Grades 1-5)" percentage={2.6} color="bg-emerald-400" />
+                            </div>
+                        </Card>
+
+                        <Card title="⏳ Tempo de Casa" subtitle="Curva de Maturação">
+                            <div className="flex items-center gap-3 mb-6">
+                                <p className="text-4xl font-black text-slate-800">2.2</p>
+                                <p className="text-xs text-slate-400 font-bold leading-tight">ANOS<br/>MÉDIA</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
+                                    <p className="text-[10px] font-bold text-blue-500 uppercase">Até 3 anos</p>
+                                    <p className="text-xl font-black text-blue-800">75%</p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Acima de 5 anos</p>
+                                    <p className="text-xl font-black text-blue-800">4.2%</p>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <Card title="🧬 Gerações" subtitle="Equilíbrio Etário">
+                            <ProgressBar label="Millennials" percentage={63.4} color="bg-blue-500" subtitle="241 Foodlovers" />
+                            <ProgressBar label="Geração Z" percentage={33.9} color="bg-sky-400" subtitle="129 Foodlovers" />
+                            <ProgressBar label="Geração X" percentage={2.6} color="bg-slate-300" subtitle="10 Foodlovers" />
+                        </Card>
+
+                        <Card title="📍 Geografia Detalhada" subtitle="Distribuição por Região">
+                            <ProgressBar label="Sudeste" percentage={50} color="bg-red-500" subtitle="Polo SP/RJ/MG" />
+                            <ProgressBar label="Sul" percentage={26.1} color="bg-orange-500" subtitle="Destaque Rio Grande (7.9%)" />
+                            <ProgressBar label="Nordeste" percentage={17.9} color="bg-yellow-500" />
+                            
+                            <div className="mt-4 pt-4 border-t border-slate-50 space-y-2">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Principais Cidades</p>
+                                <div className="flex justify-between text-xs font-bold text-slate-600"><span>São Paulo</span><span>10.5%</span></div>
+                                <div className="flex justify-between text-xs font-bold text-slate-600"><span>Rio de Janeiro</span><span>8.2%</span></div>
+                            </div>
+                        </Card>
+
+                        <Card title="⚖️ Perfil Civil & Género" subtitle="Diversidade Interna">
+                            <div className="flex justify-between items-center mb-6 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <div className="text-center flex-1">
+                                    <p className="text-xl">👨</p>
+                                    <p className="text-sm font-black text-slate-800">53,7%</p>
+                                </div>
+                                <div className="w-px h-8 bg-slate-200"></div>
+                                <div className="text-center flex-1">
+                                    <p className="text-xl">👩</p>
+                                    <p className="text-sm font-black text-slate-800">46,3%</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs text-slate-500"><span>Solteiros</span><span className="font-bold text-slate-700">75%</span></div>
+                                <div className="flex justify-between text-xs text-slate-500"><span>Casados</span><span className="font-bold text-slate-700">22.9%</span></div>
+                            </div>
+                        </Card>
+
+                        <Card title="👨‍👩‍👧‍👦 Dependentes" subtitle="Composição Familiar">
+                            <div className="bg-emerald-50 p-4 rounded-xl mb-4 text-center border border-emerald-100">
+                                <p className="text-xs font-bold text-emerald-600 uppercase mb-1">Média de Dependentes</p>
+                                <p className="text-3xl font-black text-emerald-700 tracking-tighter">1,77</p>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs"><span>Apenas 1</span><span className="font-bold">48.9%</span></div>
+                                <div className="flex justify-between text-xs"><span>2 Dependentes</span><span className="font-bold">29.9%</span></div>
+                                <div className="flex justify-between text-xs"><span>3 ou mais</span><span className="font-bold">21.2%</span></div>
+                            </div>
+                        </Card>
+                    </div>
+                </section>
+
+                <div className="section-divider">
+                    <span className="section-label">Sessão 2: Detalhes da Escolha e Benefícios</span>
+                </div>
+
+                {/* BLOCO: ESCOLHA DE BENEFÍCIOS */}
+                <section>
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="h-10 w-10 bg-red-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-red-200">2</div>
+                        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Decisões e Escolhas <span className="text-red-600">(Migração)</span></h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        
+                        <Card title="🏥 Plano de Saúde" subtitle="Movimentação de Categoria">
+                            <div className="space-y-5">
+                                <ProgressBar label="Mantiveram DEFAULT" percentage={73.9} color="bg-emerald-500" icon="✅" />
+                                <ProgressBar label="Fizeram DOWNGRADE" percentage={26.1} color="bg-orange-500" icon="⬇️" />
+                            </div>
+                            <div className="mt-8 flex gap-3">
+                                <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-tighter">Bradesco</p>
+                                    <p className="text-lg font-black text-slate-700">61.6%</p>
+                                </div>
+                                <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-tighter">Unimed</p>
+                                    <p className="text-lg font-black text-slate-700">38.4%</p>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card title="🦷 Plano Odontológico" subtitle="Nível de Eleição">
+                            <div className="space-y-5">
+                                <ProgressBar label="Essencial Plus (Default)" percentage={80} color="bg-emerald-500" icon="🦷" />
+                                <ProgressBar label="Complete White (Max)" percentage={15} color="bg-indigo-600" icon="💎" />
+                            </div>
+                            <div className="mt-8 p-3 bg-indigo-50 rounded-xl text-center border border-indigo-100">
+                                <p className="text-[11px] font-bold text-indigo-700 uppercase">129 dependentes ativos</p>
+                            </div>
+                        </Card>
+
+                        <Card className="bg-slate-900 text-white border-none" title={<span className="text-white">🍽️ Vale Refeição</span>} subtitle={<span className="text-slate-400">Eleição de Upgrade</span>}>
+                            <div className="bg-red-600/20 border border-red-500/40 rounded-2xl p-4 mb-4 text-center">
+                                <p className="text-red-400 text-[10px] font-bold uppercase mb-1">Upgrade (> 810 pts)</p>
+                                <p className="text-4xl font-black text-white">92.1%</p>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-xs border-b border-slate-800 pb-2">
+                                    <span className="text-slate-400">Médio</span><span className="font-black text-red-500">R$ 1.082</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400">Total Extras</span><span className="font-black">103.698</span>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card title="🎁 Preferências Benefícios Flex" subtitle="Alocação de Pontos Livres">
+                            <div className="space-y-3">
+                                <div className="flex justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span className="text-xs font-bold text-slate-700">Top 1: Cultura/Pet</span>
+                                    <span className="text-xs font-black text-indigo-600">12.6%</span>
+                                </div>
+                                <div className="flex justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span className="text-xs font-bold text-slate-700">Top 2: Mobilidade</span>
+                                    <span className="text-xs font-black text-indigo-600">10.5%</span>
+                                </div>
+                                <div className="mt-2 p-3 border-2 border-dashed border-slate-100 rounded-xl text-center">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Consumo Médio</p>
+                                    <p className="text-base font-black text-slate-700">138 pontos</p>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                </section>
+            </div>
+        );
+
+        const App = () => {
+            return (
+                <div className="min-h-screen">
+                    <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between py-6 gap-4">
+                                <div className="flex items-center space-x-4">
+                                    <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-red-200">A</div>
+                                    <div>
+                                        <h1 className="text-2xl font-black text-slate-900 tracking-tighter">Migração Anota Aí <span className="text-red-600">Dashboard</span></h1>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Visão Executiva Consolidada • Ciclo 2026</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-6">
+                                    <div className="text-right hidden md:block">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Vigência a partir de</p>
+                                        <p className="text-sm font-black text-slate-800">01 de Maio, 2026</p>
+                                    </div>
+                                    <div className="h-10 w-px bg-slate-200"></div>
+                                    <span className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-xs font-black uppercase border border-emerald-200 flex items-center gap-2">
+                                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                                        Dados Ativos
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+                        <Dashboard />
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
